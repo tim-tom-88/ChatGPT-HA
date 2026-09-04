@@ -7860,7 +7860,7 @@ async function main() {
       : null;
     const oauthEnabled = REMOTE_CHATGPT_MODE && process.env.CHATGPT_MCP_AUTH === "oauth";
     const oauthMetadata = oauthEnabled
-      ? createHomeAssistantOAuthMetadata(remotePublicUrl.href)
+      ? createHomeAssistantOAuthMetadata(remotePublicUrl.href, process.env.CHATGPT_MCP_OAUTH_URL)
       : undefined;
     const verifyBearerToken = oauthEnabled
       ? createHomeAssistantTokenVerifier({ baseUrl: SUPERVISOR_API.replace(/\/api$/, "") })

@@ -6,8 +6,11 @@ import {
 
 describe("Home Assistant OAuth", () => {
   it("publishes the exact MCP resource and Home Assistant auth endpoints", () => {
-    const metadata = createHomeAssistantOAuthMetadata("https://ha.example.test/chatgpt-ha/mcp");
-    expect(metadata.protectedResource.resource).toBe("https://ha.example.test/chatgpt-ha/mcp");
+    const metadata = createHomeAssistantOAuthMetadata(
+      "https://mcp.example.test/mcp",
+      "https://ha.example.test",
+    );
+    expect(metadata.protectedResource.resource).toBe("https://mcp.example.test/mcp");
     expect(metadata.protectedResource.authorization_servers).toEqual(["https://ha.example.test"]);
     expect(metadata.authorizationServer.authorization_endpoint).toBe("https://ha.example.test/auth/authorize");
     expect(metadata.authorizationServer.token_endpoint).toBe("https://ha.example.test/auth/token");
@@ -19,8 +22,15 @@ describe("Home Assistant OAuth", () => {
       "https://user:secret@ha.example.test/mcp",
       "https://ha.example.test/mcp?token=secret",
     ]) {
-      expect(() => createHomeAssistantOAuthMetadata(url)).toThrow(/public HTTPS MCP URL/);
+      expect(() => createHomeAssistantOAuthMetadata(url, "https://ha.example.test")).toThrow(/public HTTPS MCP URL/);
     }
+  });
+
+  it("rejects an invalid Home Assistant OAuth origin", () => {
+    expect(() => createHomeAssistantOAuthMetadata(
+      "https://mcp.example.test/mcp",
+      "https://ha.example.test/path",
+    )).toThrow(/OAuth origin/);
   });
 
   it("validates access tokens against Home Assistant and caches only their digest", async () => {

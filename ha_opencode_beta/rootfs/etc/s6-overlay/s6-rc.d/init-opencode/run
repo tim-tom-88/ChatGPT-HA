@@ -44,6 +44,7 @@ USER_HOOKS_ENABLED=$(bashio::config 'user_hooks_enabled' 2>/dev/null || echo "fa
 CHATGPT_MCP_ENABLED=$(bashio::config 'chatgpt_mcp_enabled' 2>/dev/null || echo "false")
 CHATGPT_MCP_AUTH=$(bashio::config 'chatgpt_mcp_auth' 2>/dev/null || echo "oauth")
 CHATGPT_MCP_PUBLIC_URL=$(bashio::config 'chatgpt_mcp_public_url' 2>/dev/null || echo "")
+CHATGPT_MCP_OAUTH_URL=$(bashio::config 'chatgpt_mcp_oauth_url' 2>/dev/null || echo "")
 
 ACCESS_TOKEN=$(bashio::config 'access_token' || echo "")
 PPQ_API_KEY=$(bashio::config 'ppq_api_key' || echo "")
@@ -115,6 +116,8 @@ CHATGPT_MCP_CONFIG_VALID=false
 if [ "${CHATGPT_MCP_ENABLED}" = "true" ]; then
     if ! printf '%s' "${CHATGPT_MCP_PUBLIC_URL}" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]+)?/[A-Za-z0-9._~!$&()*+,;=:@%/-]*$'; then
         bashio::log.warning "ChatGPT MCP is inactive: public URL must be an HTTPS URL without a query or fragment"
+    elif [ "${CHATGPT_MCP_AUTH}" = "oauth" ] && ! printf '%s' "${CHATGPT_MCP_OAUTH_URL}" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]+)?/?$'; then
+        bashio::log.warning "ChatGPT MCP is inactive: Home Assistant OAuth URL must be an HTTPS origin without a path, query, or fragment"
     elif [ "${CHATGPT_MCP_AUTH}" != "oauth" ] && [ "${CHATGPT_MCP_AUTH}" != "token" ]; then
         bashio::log.warning "ChatGPT MCP is inactive: authentication must be oauth or token"
     elif [ "${CHATGPT_MCP_AUTH}" = "token" ] && ! printf '%s' "${CHATGPT_MCP_TOKEN}" | grep -Eq '^[0-9a-f]{64}$'; then
@@ -276,6 +279,7 @@ rm -f "${CHATGPT_MCP_ENV_FILE}" "${CHATGPT_MCP_SECRET_FILE}"
 if [ "${CHATGPT_MCP_CONFIG_VALID}" = "true" ]; then
     printf 'export CHATGPT_MCP_PUBLIC_URL=%q\n' "${CHATGPT_MCP_PUBLIC_URL}" > "${CHATGPT_MCP_ENV_FILE}"
     printf 'export CHATGPT_MCP_AUTH=%q\n' "${CHATGPT_MCP_AUTH}" >> "${CHATGPT_MCP_ENV_FILE}"
+    printf 'export CHATGPT_MCP_OAUTH_URL=%q\n' "${CHATGPT_MCP_OAUTH_URL}" >> "${CHATGPT_MCP_ENV_FILE}"
     chmod 600 "${CHATGPT_MCP_ENV_FILE}"
     if [ "${CHATGPT_MCP_AUTH}" = "token" ]; then
         printf '%s\n' "${CHATGPT_MCP_TOKEN}" > "${CHATGPT_MCP_SECRET_FILE}"

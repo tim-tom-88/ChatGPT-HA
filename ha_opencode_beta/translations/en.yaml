@@ -105,6 +105,10 @@ configuration:
     name: "ChatGPT MCP public URL"
     description: "Required when Private ChatGPT MCP is on. Exact HTTPS URL entered in ChatGPT, for example https://ha.example.com/chatgpt-ha/mcp; its hostname is also enforced on every request."
 
+  chatgpt_mcp_oauth_url:
+    name: "Home Assistant OAuth URL"
+    description: "Required for OAuth. Public HTTPS origin of Home Assistant itself, for example https://ha.example.com. This can differ from the MCP hostname when a tunnel exposes the add-on separately."
+
   chatgpt_mcp_token:
     name: "ChatGPT MCP token"
     description: "Required only when ChatGPT MCP authentication is 'token'. Supply a random 64-character lowercase hexadecimal bearer credential generated with 'openssl rand -hex 32'; it is masked and never exported to OpenCode shell commands."

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## 3.0.0b13
+
+- Allow the public Home Assistant OAuth origin to differ from the tunneled MCP hostname.
+
 ## 3.0.0b12
 
 - Fix validation of the configured ChatGPT MCP public URL in Home Assistant.

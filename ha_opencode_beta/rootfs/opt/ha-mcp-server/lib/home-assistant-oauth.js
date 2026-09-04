@@ -41,7 +41,7 @@ export function createHomeAssistantTokenVerifier({
   };
 }
 
-export function createHomeAssistantOAuthMetadata(publicUrl) {
+export function createHomeAssistantOAuthMetadata(publicUrl, homeAssistantUrl) {
   let resource;
   try {
     resource = new URL(publicUrl);
@@ -51,7 +51,17 @@ export function createHomeAssistantOAuthMetadata(publicUrl) {
   if (resource.protocol !== "https:" || resource.username || resource.password || resource.search || resource.hash) {
     throw new Error("A valid public HTTPS MCP URL is required for Home Assistant OAuth metadata");
   }
-  const issuer = resource.origin;
+  let issuer;
+  try {
+    const homeAssistant = new URL(homeAssistantUrl);
+    if (homeAssistant.protocol !== "https:" || homeAssistant.username || homeAssistant.password
+      || homeAssistant.pathname !== "/" || homeAssistant.search || homeAssistant.hash) {
+      throw new Error();
+    }
+    issuer = homeAssistant.origin;
+  } catch {
+    throw new Error("A valid public HTTPS Home Assistant OAuth origin is required");
+  }
   return {
     protectedResource: {
       resource: resource.href,
