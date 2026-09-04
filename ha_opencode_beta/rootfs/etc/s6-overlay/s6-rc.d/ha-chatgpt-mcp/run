@@ -1,0 +1,53 @@
+#!/command/with-contenv bashio
+
+CHATGPT_ENV_FILE=/data/.chatgpt_mcp_env
+CHATGPT_SECRET_FILE=/data/.chatgpt_mcp_token
+
+if [ ! -f "${CHATGPT_ENV_FILE}" ] || [ ! -f "${CHATGPT_SECRET_FILE}" ]; then
+    exec sleep infinity
+fi
+if [ -L "${CHATGPT_ENV_FILE}" ] || [ -L "${CHATGPT_SECRET_FILE}" ] \
+    || [ "$(stat -c '%u:%g:%a:%h' "${CHATGPT_ENV_FILE}" 2>/dev/null || true)" != "0:0:600:1" ] \
+    || [ "$(stat -c '%u:%g:%a:%h' "${CHATGPT_SECRET_FILE}" 2>/dev/null || true)" != "0:0:600:1" ]; then
+    bashio::log.warning "ChatGPT MCP is inactive because its credential files are unsafe"
+    exec sleep infinity
+fi
+
+# shellcheck disable=SC1090
+source "${CHATGPT_ENV_FILE}"
+# shellcheck disable=SC1091
+source /data/.env_vars
+if [ -z "${SUPERVISOR_TOKEN:-}" ]; then
+    bashio::log.warning "ChatGPT MCP is inactive because Supervisor credentials are unavailable"
+    exec sleep infinity
+fi
+
+bashio::log.info "Starting private ChatGPT MCP listener on container port 8766"
+ulimit -c 0
+exec env -i \
+    HOME=/data \
+    USER=root \
+    LOGNAME=root \
+    SHELL=/bin/bash \
+    PATH=/usr/local/bin:/usr/bin:/bin \
+    LANG=C.UTF-8 \
+    NODE_OPTIONS=--max-old-space-size=512 \
+    TMPDIR=/data/.cache/opencode-tmp \
+    ADDON_CHANNEL=beta \
+    SUPERVISOR_TOKEN="${SUPERVISOR_TOKEN}" \
+    HA_ACCESS_TOKEN="${HA_ACCESS_TOKEN:-}" \
+    OPENCODE_MCP_TOOL_PROFILE=full \
+    OPENCODE_NATIVE_HA_MCP_ENABLED=false \
+    OPENCODE_DECISION_NOTES="${OPENCODE_DECISION_NOTES:-false}" \
+    OPENCODE_DECISION_NOTES_DIR=/homeassistant/opencode_beta \
+    SCREENSHOT_ENABLED="${SCREENSHOT_ENABLED:-false}" \
+    PUPPETEER_EXECUTABLE_PATH="${PUPPETEER_EXECUTABLE_PATH:-/usr/bin/chromium}" \
+    Z2M_URL="${Z2M_URL:-}" \
+    Z2M_MQTT_TOPIC="${Z2M_MQTT_TOPIC:-}" \
+    CHATGPT_MCP_REMOTE=true \
+    OPENCODE_MCP_TRANSPORT=streamable-http \
+    OPENCODE_MCP_SIDECAR_HOST=0.0.0.0 \
+    OPENCODE_MCP_SIDECAR_PORT=8766 \
+    OPENCODE_MCP_SIDECAR_PUBLIC_HOST="${CHATGPT_MCP_PUBLIC_HOST}" \
+    OPENCODE_MCP_SIDECAR_SECRET_FILE="${CHATGPT_SECRET_FILE}" \
+    node /opt/ha-mcp-server/index.js

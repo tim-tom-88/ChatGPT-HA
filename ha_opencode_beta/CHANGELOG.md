@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+## 3.0.0b11
+
+- Added an opt-in private ChatGPT Streamable HTTP MCP endpoint with bearer authentication, strict Host checking, standard MCP safety annotations, whole-installation discovery, and exact-action one-time confirmation challenges for sensitive operations.
 - Consolidated the V2 readiness and migration roadmaps, documented selectable V1 as retained for rollback, LAN, and OpenChamber, and clarified the root V2 shell credential boundary.
 
 ## 3.0.0b10

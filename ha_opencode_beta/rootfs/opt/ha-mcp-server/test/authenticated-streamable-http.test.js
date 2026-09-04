@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { request as httpRequest } from "node:http";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -55,6 +56,39 @@ async function startTestServer({ callDelayMs = 0, callHandler, jsonRpcHandlers =
   return `http://${listener.host}:${listener.port}`;
 }
 
+async function startRemoteTestServer() {
+  const directory = await mkdtemp(join(tmpdir(), "ha-mcp-remote-"));
+  temporaryDirectories.push(directory);
+  const secretFile = join(directory, "secret");
+  await writeFile(secretFile, `${SECRET}\n`, { mode: 0o600 });
+  const mcpServer = new Server({ name: "remote-test", version: "1" }, { capabilities: {} });
+  const listener = await startAuthenticatedStreamableHttp(mcpServer, {
+    secretFile,
+    host: "0.0.0.0",
+    port: 0,
+    publicHost: "ha.example.test",
+    allowRemote: true,
+    healthPath: "/health",
+  });
+  openListeners.push(listener);
+  return `http://127.0.0.1:${listener.port}`;
+}
+
+function requestWithHost(url, host) {
+  return new Promise((resolve, reject) => {
+    const request = httpRequest(url, { headers: { host } }, (response) => {
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => resolve({
+        status: response.statusCode,
+        json: () => JSON.parse(Buffer.concat(chunks).toString("utf8")),
+      }));
+    });
+    request.once("error", reject);
+    request.end();
+  });
+}
+
 function initializeRequest() {
   return {
     method: "POST",
@@ -76,6 +110,16 @@ function initializeRequest() {
 }
 
 describe("authenticated Streamable HTTP transport", () => {
+  it("requires an explicit public Host and serves only non-sensitive health data remotely", async () => {
+    const baseUrl = await startRemoteTestServer();
+    const wrongHost = await fetch(`${baseUrl}/health`);
+    const healthy = await requestWithHost(`${baseUrl}/health`, "ha.example.test");
+
+    expect(wrongHost.status).toBe(400);
+    expect(healthy.status).toBe(200);
+    expect(healthy.json()).toEqual({ status: "ok", service: "chatgpt-ha-mcp" });
+  });
+
   it("rejects missing and incorrect bearer authorization", async () => {
     const baseUrl = await startTestServer();
     const missing = await fetch(`${baseUrl}/mcp`, initializeRequest());

@@ -56,6 +56,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { startAuthenticatedStreamableHttp } from "./lib/authenticated-streamable-http.js";
+import { addConfirmationInput, createSensitiveActionPolicy } from "./lib/sensitive-action-policy.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -2600,6 +2601,8 @@ const server = new Server(
     },
   }
 );
+const REMOTE_CHATGPT_MODE = process.env.CHATGPT_MCP_REMOTE === "true";
+const sensitiveActionPolicy = createSensitiveActionPolicy();
 
 // ============================================================================
 // TOOLS DEFINITION - With titles, outputSchema, and annotations
@@ -4509,10 +4512,21 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   // Strip newer MCP spec fields that some clients may not support
   // Keep only: name, description, inputSchema (standard fields)
   const compatibleTools = getAvailableTools()
+    .map(tool => REMOTE_CHATGPT_MODE ? addConfirmationInput(tool) : tool)
     .map(tool => ({
       name: tool.name,
+      ...(REMOTE_CHATGPT_MODE && tool.title ? { title: tool.title } : {}),
       description: tool.description,
       inputSchema: tool.inputSchema,
+      ...(REMOTE_CHATGPT_MODE && tool.outputSchema ? { outputSchema: tool.outputSchema } : {}),
+      ...(REMOTE_CHATGPT_MODE ? {
+        annotations: {
+          readOnlyHint: Boolean(tool.annotations?.readOnly),
+          destructiveHint: Boolean(tool.annotations?.destructive),
+          idempotentHint: Boolean(tool.annotations?.idempotent),
+          openWorldHint: Boolean(tool.annotations?.openWorld),
+        },
+      } : {}),
     }));
   return { tools: compatibleTools };
 });
@@ -4541,6 +4555,21 @@ async function handleToolCall(request) {
           : profileDisabledToolMessage(name, MCP_TOOL_PROFILE),
       )],
     });
+  }
+
+  if (REMOTE_CHATGPT_MODE) {
+    const authorization = sensitiveActionPolicy.authorize(name, args);
+    if (!authorization.allowed) {
+      return makeCompatibleResponse({
+        isError: true,
+        content: [createTextContent(
+          `CONFIRMATION_REQUIRED: Ask the user to explicitly confirm this exact ${name} action. ` +
+          `Only after confirmation, retry with confirmation_token \`${authorization.token}\`. ` +
+          `The token is single-use and expires in ${authorization.expiresInSeconds} seconds.`,
+          { audience: ["user", "assistant"], priority: 1.0 },
+        )],
+      });
+    }
   }
 
   try {
@@ -7845,6 +7874,8 @@ async function main() {
       port: Number(portText),
       socketPath,
       publicHost: process.env.OPENCODE_MCP_SIDECAR_PUBLIC_HOST,
+      allowRemote: REMOTE_CHATGPT_MODE,
+      healthPath: REMOTE_CHATGPT_MODE ? "/health" : undefined,
       jsonRpcHandlers: nativeMcpHandler ? { "/native-mcp": nativeMcpHandler } : {},
     });
     close = () => listener.close();

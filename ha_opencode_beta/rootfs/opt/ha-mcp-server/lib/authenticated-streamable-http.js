@@ -156,6 +156,8 @@ export async function startAuthenticatedStreamableHttp(
     port = 3000,
     socketPath,
     publicHost,
+    allowRemote = false,
+    healthPath,
     jsonRpcHandlers = {},
   } = {},
 ) {
@@ -163,7 +165,8 @@ export async function startAuthenticatedStreamableHttp(
     if (!isAbsolute(socketPath)) throw new Error("Streamable HTTP socket path must be absolute");
     if (!publicHost) throw new Error("Streamable HTTP public Host is required for a Unix socket");
   } else {
-    if (!isLoopbackAddress(host)) throw new Error("Streamable HTTP host must be a loopback IP address");
+    if (!allowRemote && !isLoopbackAddress(host)) throw new Error("Streamable HTTP host must be a loopback IP address");
+    if (allowRemote && !publicHost) throw new Error("Streamable HTTP public Host is required for remote access");
     if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error("Invalid Streamable HTTP port");
   }
 
@@ -187,7 +190,7 @@ export async function startAuthenticatedStreamableHttp(
       sendJson(response, 503, "Server shutting down");
       return;
     }
-    if (!socketPath && !isLoopbackAddress(request.socket.remoteAddress)) {
+    if (!socketPath && !allowRemote && !isLoopbackAddress(request.socket.remoteAddress)) {
       sendJson(response, 403, "Forbidden");
       return;
     }
@@ -197,6 +200,14 @@ export async function startAuthenticatedStreamableHttp(
     }
     if (Object.hasOwn(request.headers, "origin")) {
       sendJson(response, 403, "Origin header is not allowed");
+      return;
+    }
+    if (healthPath && request.url === healthPath && request.method === "GET") {
+      response.writeHead(200, {
+        "content-type": "application/json",
+        "cache-control": "no-store",
+      });
+      response.end(JSON.stringify({ status: "ok", service: "chatgpt-ha-mcp" }));
       return;
     }
     const jsonRpcHandler = additionalHandlers.get(request.url);
@@ -307,7 +318,7 @@ export async function startAuthenticatedStreamableHttp(
   }
 
   const address = httpServer.address();
-  expectedHost = socketPath ? publicHost : authorityFor(host, address.port);
+  expectedHost = publicHost || authorityFor(host, address.port);
 
   return {
     host,

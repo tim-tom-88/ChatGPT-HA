@@ -11,7 +11,7 @@ afterAll(() => {
   for (const child of children) child.kill();
 });
 
-function request(profile, request) {
+function request(profile, request, extraEnv = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [SERVER], {
       env: {
@@ -19,6 +19,7 @@ function request(profile, request) {
         SUPERVISOR_TOKEN: "test-token",
         OPENCODE_MCP_TOOL_PROFILE: profile,
         OPENCODE_DECISION_NOTES: "true",
+        ...extraEnv,
       },
       stdio: ["pipe", "pipe", "pipe"],
     });
@@ -95,6 +96,25 @@ const MUTATING_TOOLS = [
 ];
 
 describe("MCP tool-profile enforcement", () => {
+  it("publishes ChatGPT metadata and gates an exact sensitive action", async () => {
+    const remote = { CHATGPT_MCP_REMOTE: "true" };
+    const listed = await request("full", { method: "tools/list", params: {} }, remote);
+    const states = listed.tools.find((tool) => tool.name === "get_states");
+    const service = listed.tools.find((tool) => tool.name === "call_service");
+
+    expect(states.title).toBe("Get Entity States");
+    expect(states.annotations.readOnlyHint).toBe(true);
+    expect(service.annotations.destructiveHint).toBe(true);
+    expect(service.inputSchema.properties.confirmation_token).toBeDefined();
+
+    const gated = await request("full", {
+      method: "tools/call",
+      params: { name: "call_service", arguments: { domain: "lock", service: "unlock" } },
+    }, remote);
+    expect(gated.isError).toBe(true);
+    expect(gated.content[0].text).toContain("CONFIRMATION_REQUIRED");
+  }, TIMEOUT_MS + 5000);
+
   it("advertises only scoped tools and rejects a hidden tool before dispatch", async () => {
     const compact = await request("compact", { method: "tools/list", params: {} });
     const compactNames = compact.tools.map((tool) => tool.name);

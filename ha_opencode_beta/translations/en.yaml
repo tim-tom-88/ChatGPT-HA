@@ -93,6 +93,18 @@ configuration:
     name: "LAN server CORS origins"
     description: "Applies only when the LAN server above is on, and only to browser-based clients such as a web or VS Code UI — 'opencode attach' does not need it. Each entry is an exact origin: scheme, host, and port, with no path, for example 'http://192.168.1.20:8080'. Without a matching entry a browser client may list providers and models but never receive replies."
 
+  chatgpt_mcp_enabled:
+    name: "Private ChatGPT MCP (beta)"
+    description: "Starts the full Home Assistant MCP tool surface on container port 8766 for a private ChatGPT app. Also map the port and publish it through an HTTPS reverse proxy; never expose the raw port directly to the internet."
+
+  chatgpt_mcp_public_host:
+    name: "ChatGPT MCP public host"
+    description: "Required when Private ChatGPT MCP is on. Exact external Host header preserved by the HTTPS proxy, for example ha.example.com; unexpected hosts are rejected."
+
+  chatgpt_mcp_token:
+    name: "ChatGPT MCP token"
+    description: "Required when Private ChatGPT MCP is on. Supply a random 64-character lowercase hexadecimal bearer credential generated with 'openssl rand -hex 32'; it is masked and never exported to OpenCode shell commands."
+
   ppq_private_enabled:
     name: "PPQ private TEE models (beta)"
     description: "Requires the PPQ API key below. Starts an internal PPQ private-mode encryption proxy and adds it to OpenCode as a provider for TEE-backed models; the proxy binds to 127.0.0.1 inside the container and is not reachable from your network."

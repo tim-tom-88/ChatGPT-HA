@@ -41,9 +41,12 @@ FOCUS_MODE=$(bashio::config 'focus_mode' 2>/dev/null || echo "false")
 HOME_BRIEFING_ENABLED=$(bashio::config 'home_briefing_enabled' 2>/dev/null || echo "true")
 DECISION_NOTES_ENABLED=$(bashio::config 'decision_notes_enabled' 2>/dev/null || echo "true")
 USER_HOOKS_ENABLED=$(bashio::config 'user_hooks_enabled' 2>/dev/null || echo "false")
+CHATGPT_MCP_ENABLED=$(bashio::config 'chatgpt_mcp_enabled' 2>/dev/null || echo "false")
+CHATGPT_MCP_PUBLIC_HOST=$(bashio::config 'chatgpt_mcp_public_host' 2>/dev/null || echo "")
 
 ACCESS_TOKEN=$(bashio::config 'access_token' || echo "")
 PPQ_API_KEY=$(bashio::config 'ppq_api_key' || echo "")
+CHATGPT_MCP_TOKEN=$(bashio::config 'chatgpt_mcp_token' 2>/dev/null || echo "")
 
 if [ "${NATIVE_HA_MCP_API_ID}" = "null" ]; then
     NATIVE_HA_MCP_API_ID=""
@@ -107,7 +110,18 @@ if [ "${USER_HOOKS_ENABLED}" != "true" ]; then
     USER_HOOKS_ENABLED="false"
 fi
 
-bashio::log.info "Configuration: INTERFACE_MODE=${INTERFACE_MODE} TERMINAL_RUNTIME=${TERMINAL_RUNTIME} MCP=${MCP_ENABLED} MCP_TOOL_PROFILE=${MCP_TOOL_PROFILE} NATIVE_HA_MCP=${NATIVE_HA_MCP_ENABLED} NATIVE_HA_MCP_API_ID=${NATIVE_HA_MCP_API_ID} LSP=${LSP_ENABLED} SCREENSHOT=${SCREENSHOT_ENABLED} PPQ_PRIVATE=${PPQ_PRIVATE_ENABLED} ADDON_ACCESS=${ADDON_ACCESS_ENABLED} CPU_MODE=${CPU_MODE_CONFIG} RESTRICT_SENSITIVE_FILES=${RESTRICT_SENSITIVE_FILES} FOCUS_MODE=${FOCUS_MODE} HOME_BRIEFING=${HOME_BRIEFING_ENABLED} DECISION_NOTES=${DECISION_NOTES_ENABLED} USER_HOOKS=${USER_HOOKS_ENABLED}"
+CHATGPT_MCP_CONFIG_VALID=false
+if [ "${CHATGPT_MCP_ENABLED}" = "true" ]; then
+    if ! printf '%s' "${CHATGPT_MCP_PUBLIC_HOST}" | grep -Eq '^[A-Za-z0-9.-]+(:[0-9]+)?$'; then
+        bashio::log.warning "ChatGPT MCP is inactive: public host is missing or invalid"
+    elif ! printf '%s' "${CHATGPT_MCP_TOKEN}" | grep -Eq '^[0-9a-f]{64}$'; then
+        bashio::log.warning "ChatGPT MCP is inactive: token must be 64 lowercase hexadecimal characters"
+    else
+        CHATGPT_MCP_CONFIG_VALID=true
+    fi
+fi
+
+bashio::log.info "Configuration: INTERFACE_MODE=${INTERFACE_MODE} TERMINAL_RUNTIME=${TERMINAL_RUNTIME} MCP=${MCP_ENABLED} MCP_TOOL_PROFILE=${MCP_TOOL_PROFILE} NATIVE_HA_MCP=${NATIVE_HA_MCP_ENABLED} NATIVE_HA_MCP_API_ID=${NATIVE_HA_MCP_API_ID} LSP=${LSP_ENABLED} SCREENSHOT=${SCREENSHOT_ENABLED} CHATGPT_MCP=${CHATGPT_MCP_CONFIG_VALID} PPQ_PRIVATE=${PPQ_PRIVATE_ENABLED} ADDON_ACCESS=${ADDON_ACCESS_ENABLED} CPU_MODE=${CPU_MODE_CONFIG} RESTRICT_SENSITIVE_FILES=${RESTRICT_SENSITIVE_FILES} FOCUS_MODE=${FOCUS_MODE} HOME_BRIEFING=${HOME_BRIEFING_ENABLED} DECISION_NOTES=${DECISION_NOTES_ENABLED} USER_HOOKS=${USER_HOOKS_ENABLED}"
 
 # ==============================================================================
 # Runtime paths
@@ -250,6 +264,18 @@ printf 'export TMPDIR=%q\n' "${OPENCODE_TMPDIR}" >> "${ENV_VARS_FILE}"
 printf 'export PATH="/usr/local/bin:/usr/bin:/bin:${PATH}"\n' >> "${ENV_VARS_FILE}"
 printf 'export OPENCODE_DISABLE_AUTOUPDATE=true\n' >> "${ENV_VARS_FILE}"
 chmod 600 "${ENV_VARS_FILE}"
+
+# The public ChatGPT listener reads a purpose-specific root-only file. Never
+# place this bearer credential in the shared shell environment.
+CHATGPT_MCP_ENV_FILE=/data/.chatgpt_mcp_env
+CHATGPT_MCP_SECRET_FILE=/data/.chatgpt_mcp_token
+rm -f "${CHATGPT_MCP_ENV_FILE}" "${CHATGPT_MCP_SECRET_FILE}"
+if [ "${CHATGPT_MCP_CONFIG_VALID}" = "true" ]; then
+    printf 'export CHATGPT_MCP_PUBLIC_HOST=%q\n' "${CHATGPT_MCP_PUBLIC_HOST}" > "${CHATGPT_MCP_ENV_FILE}"
+    printf '%s\n' "${CHATGPT_MCP_TOKEN}" > "${CHATGPT_MCP_SECRET_FILE}"
+    chmod 600 "${CHATGPT_MCP_ENV_FILE}" "${CHATGPT_MCP_SECRET_FILE}"
+    bashio::log.info "ChatGPT MCP listener configured for ${CHATGPT_MCP_PUBLIC_HOST}:8766"
+fi
 
 # ==============================================================================
 # Expose configured serial devices to OpenCode and shell sessions

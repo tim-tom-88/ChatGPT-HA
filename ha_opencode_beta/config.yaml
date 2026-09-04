@@ -1,10 +1,10 @@
 ---
 name: "OpenCode Beta"
 description: "Beta channel for OpenCode - AI coding agent for Home Assistant. May contain experimental features."
-version: "3.0.0b10"
+version: "3.0.0b11"
 slug: "ha_opencode_beta"
-image: "ghcr.io/magnusoverli/ha_opencode_beta"
-url: "https://github.com/magnusoverli/opencode"
+image: "ghcr.io/tim-tom-88/ha_opencode_beta"
+url: "https://github.com/tim-tom-88/ChatGPT-HA"
 arch:
   - aarch64
   - amd64
@@ -20,9 +20,11 @@ panel_title: OpenCode Beta
 ports:
   4096/tcp: null
   4097/tcp: null
+  8766/tcp: null
 ports_description:
   4096/tcp: "OpenCode LAN server — only serves traffic when the 'OpenCode LAN server' option is enabled. These are container ports; if the stable OpenCode add-on is installed too, give each one a different host port here."
   4097/tcp: "OpenChamber LAN web UI (requires OpenCode runtime V1 and interface OpenChamber). Container port — pick a host port that the stable add-on is not already using."
+  8766/tcp: "Private ChatGPT Streamable HTTP MCP endpoint (enable explicitly, then publish only through HTTPS)"
 
 # File access - Home Assistant config directory
 map:
@@ -130,6 +132,15 @@ options:
   # this server); the OpenCode CLI ('opencode attach') does not need this.
   # Example: http://192.168.1.20:8080
   cors_origins: []
+  # Private remote MCP endpoint for a ChatGPT custom app. Map container port
+  # 8766 and publish it only through an HTTPS reverse proxy or tunnel.
+  chatgpt_mcp_enabled: false
+  # Exact Host header forwarded by the HTTPS proxy, for example
+  # ha.example.com. Requests with any other Host are rejected.
+  chatgpt_mcp_public_host: ""
+  # A random 64-character lowercase hexadecimal bearer token. Generate with:
+  # openssl rand -hex 32
+  chatgpt_mcp_token: ""
 
   # --- 6. Model providers ------------------------------------------------
   # PPQ private mode: routes OpenCode through a local encryption proxy for
@@ -197,6 +208,9 @@ schema:
   enable_server: bool
   cors_origins:
     - str
+  chatgpt_mcp_enabled: bool
+  chatgpt_mcp_public_host: str?
+  chatgpt_mcp_token: password
 
   # --- 6. Model providers ------------------------------------------------
   ppq_private_enabled: bool
@@ -224,6 +238,8 @@ backup_exclude:
   - ".local/share/opencode/cache/*"
   - ".env_vars"
   - ".env_vars_discovered"
+  - ".chatgpt_mcp_env"
+  - ".chatgpt_mcp_token"
   - "evaluations/*"
   # Generated home context is rebuilt at every start; restoring a stale copy
   # would describe a different installation.

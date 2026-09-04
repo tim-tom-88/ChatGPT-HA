@@ -22,6 +22,8 @@
 
 > **Upstream attribution:** This is an independent Home Assistant add-on that redistributes and integrates [OpenCode](https://github.com/anomalyco/opencode), © 2025 opencode, under the MIT License. It is not made by, affiliated with, or endorsed by the OpenCode team or Anomaly. See the [third-party notices](THIRD-PARTY-LICENSES.md).
 
+> **ChatGPT-HA fork:** The beta channel adds a private, authenticated Streamable HTTP MCP endpoint for use directly from ChatGPT, with whole-installation discovery and explicit confirmation challenges for sensitive actions. See [Private ChatGPT MCP](ha_opencode_beta/DOCS.md#private-chatgpt-mcp-beta).
+
 ## 🚀 Getting Started
 
 > ⚙️ **Hardware requirement:** on x86-64, OpenCode needs a CPU with **SSE4.2** (Intel Nehalem/2008 or newer, AMD Bulldozer/2011 or Jaguar/2013 or newer). Older processors cannot run it at all — it exits with `Illegal instruction (core dumped)`. ARM64 is unaffected. See [CPU requirements][cpu-req] for details.
@@ -35,7 +37,7 @@
 
 Go to **Settings** → **Add-ons** → **Add-on Store** → **⋮** → **Repositories**
 
-Add: `https://github.com/magnusoverli/opencode`
+Add: `https://github.com/tim-tom-88/ChatGPT-HA`
 </details>
 
 ### 2. Install the Add-on
@@ -367,18 +369,18 @@ This distribution also includes third-party software, including OpenCode. Its co
 [docs]: ./ha_opencode/DOCS.md
 [cpu-req]: ./ha_opencode/DOCS.md#cpu-requirements
 [changelog]: ./ha_opencode/CHANGELOG.md
-[issues]: https://github.com/magnusoverli/opencode/issues
+[issues]: https://github.com/tim-tom-88/ChatGPT-HA/issues
 [license]: UNLICENSE
-[github]: https://github.com/magnusoverli/opencode
-[repo-add]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmagnusoverli%2Fopencode
+[github]: https://github.com/tim-tom-88/ChatGPT-HA
+[repo-add]: https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Ftim-tom-88%2FChatGPT-HA
 [repo-btn]: https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg
 
 <!-- Badges -->
-[version-shield]: https://img.shields.io/github/v/release/magnusoverli/opencode.svg?style=for-the-badge
+[version-shield]: https://img.shields.io/github/v/release/tim-tom-88/ChatGPT-HA.svg?style=for-the-badge
 [project-stage-shield]: https://img.shields.io/badge/project%20stage-experimental-orange.svg?style=for-the-badge
-[license-shield]: https://img.shields.io/github/license/magnusoverli/opencode.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/tim-tom-88/ChatGPT-HA.svg?style=for-the-badge
 [maintenance-shield]: https://img.shields.io/maintenance/yes/2026.svg?style=for-the-badge
-[stable-build-shield]: https://img.shields.io/github/v/release/magnusoverli/opencode?style=for-the-badge&label=stable%20release
-[beta-build-shield]: https://img.shields.io/github/v/release/magnusoverli/opencode?include_prereleases&style=for-the-badge&label=beta%20release
-[stable-build-workflow]: https://github.com/magnusoverli/opencode/releases
-[beta-build-workflow]: https://github.com/magnusoverli/opencode/releases
+[stable-build-shield]: https://img.shields.io/github/v/release/tim-tom-88/ChatGPT-HA?style=for-the-badge&label=stable%20release
+[beta-build-shield]: https://img.shields.io/github/v/release/tim-tom-88/ChatGPT-HA?include_prereleases&style=for-the-badge&label=beta%20release
+[stable-build-workflow]: https://github.com/tim-tom-88/ChatGPT-HA/releases
+[beta-build-workflow]: https://github.com/tim-tom-88/ChatGPT-HA/releases

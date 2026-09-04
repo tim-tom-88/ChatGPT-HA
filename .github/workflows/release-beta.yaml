@@ -93,14 +93,14 @@ jobs:
           # and current, because the tag is on this branch. All that is left is
           # to stamp the version the image was just built with.
           sed -i "s/^version: .*/version: \"${VERSION}\"/" ha_opencode_beta/config.yaml
-          sed -i 's|^image: .*|image: "ghcr.io/magnusoverli/ha_opencode_beta"|' ha_opencode_beta/config.yaml
+          sed -i 's|^image: .*|image: "ghcr.io/tim-tom-88/ha_opencode_beta"|' ha_opencode_beta/config.yaml
 
           grep -qx "version: \"${VERSION}\"" ha_opencode_beta/config.yaml || {
             echo "::error::version: line was not rewritten to \"${VERSION}\"."
             grep -n "^version:" ha_opencode_beta/config.yaml
             exit 1
           }
-          grep -qx 'image: "ghcr.io/magnusoverli/ha_opencode_beta"' ha_opencode_beta/config.yaml || {
+          grep -qx 'image: "ghcr.io/tim-tom-88/ha_opencode_beta"' ha_opencode_beta/config.yaml || {
             echo "::error::image: line was not rewritten."
             grep -n "^image:" ha_opencode_beta/config.yaml
             exit 1

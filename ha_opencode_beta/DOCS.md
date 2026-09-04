@@ -309,6 +309,52 @@ permission:
 
 The equivalent `"/homeassistant/docs/**": allow` works in LAN server mode after an add-on restart. An explicit `edit: allow` remains fully write-capable. The rule is applied when the server starts, so restart the add-on after adding or changing a custom agent file.
 
+## Private ChatGPT MCP (Beta)
+
+This is a separate, opt-in Streamable HTTP MCP endpoint for a private ChatGPT custom app. It exposes the add-on's full Home Assistant MCP profile, so ChatGPT can discover the installation directly instead of inheriting the entity allowlist used by Home Assistant's native `/api/mcp` integration.
+
+### Configure the add-on
+
+1. Generate a bearer credential on a trusted computer:
+
+   ```bash
+   openssl rand -hex 32
+   ```
+
+2. In the add-on **Configuration** tab:
+   - enable **ChatGPT MCP**;
+   - set **ChatGPT MCP public host** to the exact external hostname, for example `ha.hodgsonhome.uk`;
+   - paste the generated 64-character value into **ChatGPT MCP token**.
+3. In the add-on **Network** settings, map `8766/tcp` to a host port. Do not expose that port directly to the internet.
+4. Restart the add-on.
+
+The token is copied into a root-only runtime file and is not inherited by OpenCode shell commands. The Home Assistant Supervisor token remains process-only inside the MCP service and is never sent to ChatGPT.
+
+### Publish through HTTPS
+
+Configure the existing reverse proxy or tunnel to forward:
+
+- public `https://ha.hodgsonhome.uk/chatgpt-ha/mcp` to backend `http://HOME_ASSISTANT_HOST:8766/mcp`;
+- optionally, public `https://ha.hodgsonhome.uk/chatgpt-ha/health` to backend `http://HOME_ASSISTANT_HOST:8766/health`.
+
+Preserve the original `Host` header and disable response buffering for the MCP route. The backend accepts no browser `Origin` header, rejects any unexpected `Host`, caps request/header sizes, and requires `Authorization: Bearer <ChatGPT MCP token>` for every MCP request. The health route is unauthenticated but returns only a static readiness object.
+
+### Connect ChatGPT
+
+In ChatGPT, enable developer mode under **Settings → Apps → Advanced Settings**, then create a private app with:
+
+- **MCP URL:** `https://ha.hodgsonhome.uk/chatgpt-ha/mcp`
+- **Authentication:** bearer/API-key authentication
+- **Bearer value:** the configured ChatGPT MCP token
+
+If the current ChatGPT app form offers only OAuth or no authentication, do not select no authentication and do not put the token in the URL. This beta endpoint intentionally fails closed; an OAuth adapter is the next compatibility step for such accounts.
+
+### Confirmation behaviour
+
+Read-only requests and routine reversible controls run directly. Sensitive actions—locks, alarms, security-related covers, configuration writes, updates, broad administrative CLIs, and availability-impacting operations—return `CONFIRMATION_REQUIRED` before execution. ChatGPT must ask for explicit confirmation and retry the identical call with the short-lived one-time token from that response. Tokens expire after five minutes, cannot authorize changed arguments, and cannot be replayed.
+
+Home Assistant's native `https://HOST/api/mcp` endpoint is unchanged and can remain installed for Assist or other clients.
+
 ## OpenChamber LAN Web UI (Beta)
 
 By default the OpenChamber web UI (`interface_mode: openchamber`) is served **only** through Home Assistant Ingress at `/api/hassio_ingress/<token>/`. That is the recommended path because Home Assistant provides the authentication layer.
