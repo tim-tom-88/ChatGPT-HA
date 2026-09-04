@@ -105,6 +105,7 @@ function requestWithHost(url, host) {
       response.on("data", (chunk) => chunks.push(chunk));
       response.on("end", () => resolve({
         status: response.statusCode,
+        headers: response.headers,
         json: () => JSON.parse(Buffer.concat(chunks).toString("utf8")),
       }));
     });
@@ -137,6 +138,7 @@ describe("authenticated Streamable HTTP transport", () => {
   it("serves OAuth discovery and validates Home Assistant bearer tokens", async () => {
     const baseUrl = await startOAuthTestServer();
     const metadata = await requestWithHost(`${baseUrl}/.well-known/oauth-protected-resource`, "ha.example.test");
+    const unauthenticatedProbe = await requestWithHost(`${baseUrl}/mcp`, "ha.example.test");
     const unauthorized = await new Promise((resolve, reject) => {
       const request = httpRequest(`${baseUrl}/mcp`, {
         method: "POST",
@@ -151,6 +153,8 @@ describe("authenticated Streamable HTTP transport", () => {
 
     expect(metadata.status).toBe(200);
     expect(metadata.json().resource).toBe("https://ha.example.test/chatgpt-ha/mcp");
+    expect(unauthenticatedProbe.status).toBe(401);
+    expect(unauthenticatedProbe.headers["www-authenticate"]).toContain("oauth-protected-resource");
     expect(unauthorized.statusCode).toBe(401);
     expect(unauthorized.headers["www-authenticate"]).toContain("oauth-protected-resource");
   });

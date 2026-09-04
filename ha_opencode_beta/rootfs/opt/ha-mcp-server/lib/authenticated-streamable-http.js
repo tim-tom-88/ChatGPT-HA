@@ -240,11 +240,6 @@ export async function startAuthenticatedStreamableHttp(
       sendJson(response, 404, "Not found");
       return;
     }
-    if (request.method !== "POST") {
-      request.resume();
-      sendJson(response, 405, "Method not allowed", { allow: "POST" });
-      return;
-    }
     const bearerToken = readBearerToken(request.headers.authorization);
     const authorized = verifyBearerToken
       ? await verifyBearerToken(bearerToken)
@@ -259,6 +254,11 @@ export async function startAuthenticatedStreamableHttp(
           ? `Bearer resource_metadata="${resourceMetadata}"`
           : "Bearer",
       });
+      return;
+    }
+    if (request.method !== "POST") {
+      request.resume();
+      sendJson(response, 405, "Method not allowed", { allow: "POST" });
       return;
     }
 

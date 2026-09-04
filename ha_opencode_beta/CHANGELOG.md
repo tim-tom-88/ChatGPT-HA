@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## 3.0.0b15
+
+- Advertise the OAuth bearer challenge during ChatGPT's unauthenticated MCP URL probe.
+
 ## 3.0.0b14
 
 - Pass the configured Home Assistant OAuth origin into the isolated ChatGPT MCP service process.
