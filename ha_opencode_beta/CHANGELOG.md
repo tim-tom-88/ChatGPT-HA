@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## 3.0.0b14
+
+- Pass the configured Home Assistant OAuth origin into the isolated ChatGPT MCP service process.
+
 ## 3.0.0b13
 
 - Allow the public Home Assistant OAuth origin to differ from the tunneled MCP hostname.
