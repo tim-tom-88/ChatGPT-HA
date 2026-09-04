@@ -57,7 +57,8 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { startAuthenticatedStreamableHttp } from "./lib/authenticated-streamable-http.js";
 import { addConfirmationInput, createSensitiveActionPolicy } from "./lib/sensitive-action-policy.js";
-import { createHomeAssistantOAuthMetadata, createHomeAssistantTokenVerifier } from "./lib/home-assistant-oauth.js";
+import { createHomeAssistantTokenVerifier } from "./lib/home-assistant-oauth.js";
+import { createOAuthBroker } from "./lib/oauth-broker.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -7859,9 +7860,10 @@ async function main() {
       ? new URL(process.env.CHATGPT_MCP_PUBLIC_URL)
       : null;
     const oauthEnabled = REMOTE_CHATGPT_MODE && process.env.CHATGPT_MCP_AUTH === "oauth";
-    const oauthMetadata = oauthEnabled
-      ? createHomeAssistantOAuthMetadata(remotePublicUrl.href, process.env.CHATGPT_MCP_OAUTH_URL)
+    const oauthBroker = oauthEnabled
+      ? createOAuthBroker({ publicUrl: remotePublicUrl.href, homeAssistantUrl: process.env.CHATGPT_MCP_OAUTH_URL })
       : undefined;
+    const oauthMetadata = oauthBroker?.metadata;
     const verifyBearerToken = oauthEnabled
       ? createHomeAssistantTokenVerifier({ baseUrl: SUPERVISOR_API.replace(/\/api$/, "") })
       : undefined;
@@ -7889,6 +7891,7 @@ async function main() {
       healthPath: REMOTE_CHATGPT_MODE ? "/health" : undefined,
       verifyBearerToken,
       oauthMetadata,
+      publicRequestHandler: oauthBroker?.handle,
       jsonRpcHandlers: nativeMcpHandler ? { "/native-mcp": nativeMcpHandler } : {},
     });
     close = () => listener.close();

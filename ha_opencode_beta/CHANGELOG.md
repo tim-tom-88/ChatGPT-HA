@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## 3.0.0b16
+
+- Add a PKCE-enforcing OAuth broker for current ChatGPT custom connectors and require the authorizing Home Assistant user to be an owner or administrator.
+
 ## 3.0.0b15
 
 - Advertise the OAuth bearer challenge during ChatGPT's unauthenticated MCP URL probe.

@@ -165,6 +165,7 @@ export async function startAuthenticatedStreamableHttp(
     healthPath,
     verifyBearerToken,
     oauthMetadata,
+    publicRequestHandler,
     jsonRpcHandlers = {},
   } = {},
 ) {
@@ -179,6 +180,9 @@ export async function startAuthenticatedStreamableHttp(
 
   if (verifyBearerToken && typeof verifyBearerToken !== "function") {
     throw new Error("Bearer token verifier must be a function");
+  }
+  if (publicRequestHandler && typeof publicRequestHandler !== "function") {
+    throw new Error("Public request handler must be a function");
   }
   const expectedAuthorization = verifyBearerToken ? null : readBearerAuthorization(secretFile);
   const additionalHandlers = new Map(Object.entries(jsonRpcHandlers));
@@ -212,6 +216,7 @@ export async function startAuthenticatedStreamableHttp(
       sendJson(response, 403, "Origin header is not allowed");
       return;
     }
+    if (publicRequestHandler && await publicRequestHandler(request, response)) return;
     if (oauthMetadata && request.method === "GET") {
       const metadata = request.url === "/.well-known/oauth-protected-resource"
         ? oauthMetadata.protectedResource
