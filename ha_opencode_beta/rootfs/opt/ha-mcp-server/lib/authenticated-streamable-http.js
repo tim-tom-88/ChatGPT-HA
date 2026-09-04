@@ -65,6 +65,11 @@ function hasValidAuthorization(value, expected) {
   return valid;
 }
 
+function readBearerToken(value) {
+  if (typeof value !== "string" || !value.startsWith("Bearer ")) return "";
+  return value.slice(7);
+}
+
 function sendJson(response, statusCode, message, headers = {}) {
   if (response.headersSent) return;
   response.writeHead(statusCode, {
@@ -158,6 +163,8 @@ export async function startAuthenticatedStreamableHttp(
     publicHost,
     allowRemote = false,
     healthPath,
+    verifyBearerToken,
+    oauthMetadata,
     jsonRpcHandlers = {},
   } = {},
 ) {
@@ -170,11 +177,14 @@ export async function startAuthenticatedStreamableHttp(
     if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error("Invalid Streamable HTTP port");
   }
 
-  const expectedAuthorization = readBearerAuthorization(secretFile);
+  if (verifyBearerToken && typeof verifyBearerToken !== "function") {
+    throw new Error("Bearer token verifier must be a function");
+  }
+  const expectedAuthorization = verifyBearerToken ? null : readBearerAuthorization(secretFile);
   const additionalHandlers = new Map(Object.entries(jsonRpcHandlers));
   for (const [path, handler] of additionalHandlers) {
     if (!/^\/[a-z0-9-]+$/.test(path) || path === MCP_PATH || typeof handler !== "function") {
-      expectedAuthorization.fill(0);
+      expectedAuthorization?.fill(0);
       throw new Error("Invalid authenticated JSON-RPC route");
     }
   }
@@ -202,6 +212,21 @@ export async function startAuthenticatedStreamableHttp(
       sendJson(response, 403, "Origin header is not allowed");
       return;
     }
+    if (oauthMetadata && request.method === "GET") {
+      const metadata = request.url === "/.well-known/oauth-protected-resource"
+        ? oauthMetadata.protectedResource
+        : request.url === "/.well-known/oauth-authorization-server"
+          ? oauthMetadata.authorizationServer
+          : null;
+      if (metadata) {
+        response.writeHead(200, {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+        });
+        response.end(JSON.stringify(metadata));
+        return;
+      }
+    }
     if (healthPath && request.url === healthPath && request.method === "GET") {
       response.writeHead(200, {
         "content-type": "application/json",
@@ -220,9 +245,20 @@ export async function startAuthenticatedStreamableHttp(
       sendJson(response, 405, "Method not allowed", { allow: "POST" });
       return;
     }
-    if (!hasValidAuthorization(request.headers.authorization, expectedAuthorization)) {
+    const bearerToken = readBearerToken(request.headers.authorization);
+    const authorized = verifyBearerToken
+      ? await verifyBearerToken(bearerToken)
+      : hasValidAuthorization(request.headers.authorization, expectedAuthorization);
+    if (!authorized) {
       request.resume();
-      sendJson(response, 401, "Unauthorized", { "www-authenticate": "Bearer" });
+      const resourceMetadata = oauthMetadata?.protectedResource?.resource
+        ? `${new URL(oauthMetadata.protectedResource.resource).origin}/.well-known/oauth-protected-resource`
+        : null;
+      sendJson(response, 401, "Unauthorized", {
+        "www-authenticate": resourceMetadata
+          ? `Bearer resource_metadata="${resourceMetadata}"`
+          : "Bearer",
+      });
       return;
     }
 
@@ -312,7 +348,7 @@ export async function startAuthenticatedStreamableHttp(
       else httpServer.listen(port, host, onListen);
     });
   } catch (error) {
-    expectedAuthorization.fill(0);
+    expectedAuthorization?.fill(0);
     await mcpServer.close().catch(() => {});
     throw error;
   }
@@ -343,7 +379,7 @@ export async function startAuthenticatedStreamableHttp(
           httpServer.closeAllConnections?.();
           await initializeQueue.catch(() => {});
         } finally {
-          expectedAuthorization.fill(0);
+          expectedAuthorization?.fill(0);
           if (socketPath) {
             try { unlinkSync(socketPath); } catch {}
           }

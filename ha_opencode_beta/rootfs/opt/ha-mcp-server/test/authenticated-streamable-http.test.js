@@ -74,6 +74,30 @@ async function startRemoteTestServer() {
   return `http://127.0.0.1:${listener.port}`;
 }
 
+async function startOAuthTestServer() {
+  const mcpServer = new Server({ name: "oauth-test", version: "1" }, { capabilities: {} });
+  const listener = await startAuthenticatedStreamableHttp(mcpServer, {
+    host: "0.0.0.0",
+    port: 0,
+    publicHost: "ha.example.test",
+    allowRemote: true,
+    verifyBearerToken: async (token) => token === "valid-home-assistant-access-token",
+    oauthMetadata: {
+      protectedResource: {
+        resource: "https://ha.example.test/chatgpt-ha/mcp",
+        authorization_servers: ["https://ha.example.test"],
+      },
+      authorizationServer: {
+        issuer: "https://ha.example.test",
+        authorization_endpoint: "https://ha.example.test/auth/authorize",
+        token_endpoint: "https://ha.example.test/auth/token",
+      },
+    },
+  });
+  openListeners.push(listener);
+  return `http://127.0.0.1:${listener.port}`;
+}
+
 function requestWithHost(url, host) {
   return new Promise((resolve, reject) => {
     const request = httpRequest(url, { headers: { host } }, (response) => {
@@ -110,6 +134,27 @@ function initializeRequest() {
 }
 
 describe("authenticated Streamable HTTP transport", () => {
+  it("serves OAuth discovery and validates Home Assistant bearer tokens", async () => {
+    const baseUrl = await startOAuthTestServer();
+    const metadata = await requestWithHost(`${baseUrl}/.well-known/oauth-protected-resource`, "ha.example.test");
+    const unauthorized = await new Promise((resolve, reject) => {
+      const request = httpRequest(`${baseUrl}/mcp`, {
+        method: "POST",
+        headers: { host: "ha.example.test", "content-type": "application/json" },
+      }, (response) => {
+        response.resume();
+        response.on("end", () => resolve(response));
+      });
+      request.once("error", reject);
+      request.end("{}");
+    });
+
+    expect(metadata.status).toBe(200);
+    expect(metadata.json().resource).toBe("https://ha.example.test/chatgpt-ha/mcp");
+    expect(unauthorized.statusCode).toBe(401);
+    expect(unauthorized.headers["www-authenticate"]).toContain("oauth-protected-resource");
+  });
+
   it("requires an explicit public Host and serves only non-sensitive health data remotely", async () => {
     const baseUrl = await startRemoteTestServer();
     const wrongHost = await fetch(`${baseUrl}/health`);

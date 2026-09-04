@@ -57,6 +57,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { startAuthenticatedStreamableHttp } from "./lib/authenticated-streamable-http.js";
 import { addConfirmationInput, createSensitiveActionPolicy } from "./lib/sensitive-action-policy.js";
+import { createHomeAssistantOAuthMetadata, createHomeAssistantTokenVerifier } from "./lib/home-assistant-oauth.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -7854,6 +7855,16 @@ async function main() {
     const host = process.env.OPENCODE_MCP_SIDECAR_HOST || "127.0.0.1";
     const portText = process.env.OPENCODE_MCP_SIDECAR_PORT || "3000";
     if (!/^\d+$/.test(portText)) throw new Error("Invalid OPENCODE_MCP_SIDECAR_PORT");
+    const remotePublicUrl = REMOTE_CHATGPT_MODE
+      ? new URL(process.env.CHATGPT_MCP_PUBLIC_URL)
+      : null;
+    const oauthEnabled = REMOTE_CHATGPT_MODE && process.env.CHATGPT_MCP_AUTH === "oauth";
+    const oauthMetadata = oauthEnabled
+      ? createHomeAssistantOAuthMetadata(remotePublicUrl.href)
+      : undefined;
+    const verifyBearerToken = oauthEnabled
+      ? createHomeAssistantTokenVerifier({ baseUrl: SUPERVISOR_API.replace(/\/api$/, "") })
+      : undefined;
     const nativeMcpHandler = NATIVE_HA_MCP_BRIDGE_ENABLED
       ? createNativeMcpHandler({
         supervisorToken: SUPERVISOR_TOKEN,
@@ -7873,9 +7884,11 @@ async function main() {
       host,
       port: Number(portText),
       socketPath,
-      publicHost: process.env.OPENCODE_MCP_SIDECAR_PUBLIC_HOST,
+      publicHost: remotePublicUrl?.host || process.env.OPENCODE_MCP_SIDECAR_PUBLIC_HOST,
       allowRemote: REMOTE_CHATGPT_MODE,
       healthPath: REMOTE_CHATGPT_MODE ? "/health" : undefined,
+      verifyBearerToken,
+      oauthMetadata,
       jsonRpcHandlers: nativeMcpHandler ? { "/native-mcp": nativeMcpHandler } : {},
     });
     close = () => listener.close();

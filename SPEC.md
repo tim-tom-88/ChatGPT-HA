@@ -75,7 +75,7 @@ The fork should add a distinct remote MCP service around the add-on's existing b
 
 - Streamable HTTP transport over HTTPS.
 - A stable endpoint distinct from Home Assistant's native `/api/mcp` route, provisionally `/chatgpt-ha/mcp`.
-- Authentication based on the user's Home Assistant identity/token flow where compatible with ChatGPT; credentials must never be embedded in repository files or tool output.
+- Home Assistant OAuth authentication: advertise Home Assistant's authorization and token endpoints, then validate each short-lived user access token before MCP dispatch. Credentials must never be embedded in repository files or tool output.
 - Requests run inside the add-on and continue using the Supervisor-backed Home Assistant APIs internally.
 - No raw public exposure of the Supervisor token or the existing stdio process.
 - Server-side policy enforcement for sensitive tools and targets.
@@ -117,7 +117,7 @@ The remote endpoint publishes standard MCP titles, schemas, and `readOnlyHint`, 
 
 ## Open Implementation Checks
 
-- Confirm bearer/API-key authentication is available in the user's current ChatGPT custom-app flow; otherwise add an OAuth adapter rather than weakening the endpoint.
+- Confirm whether ChatGPT accepts Home Assistant's IndieAuth-style public client directly or requires a non-empty client secret/dynamic registration; if required, add a small OAuth broker rather than weakening the endpoint.
 - Confirm whether the existing reverse proxy can forward a second streaming MCP route to an add-on port.
 - Verify whether any useful native Home Assistant MCP capabilities can be composed without inheriting its entity allowlist.
 - Version-one changes are isolated to `ha_opencode_beta/`, consistent with upstream's channel policy.

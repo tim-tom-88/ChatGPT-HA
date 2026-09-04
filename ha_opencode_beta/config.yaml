@@ -135,11 +135,14 @@ options:
   # Private remote MCP endpoint for a ChatGPT custom app. Map container port
   # 8766 and publish it only through an HTTPS reverse proxy or tunnel.
   chatgpt_mcp_enabled: false
-  # Exact Host header forwarded by the HTTPS proxy, for example
-  # ha.example.com. Requests with any other Host are rejected.
-  chatgpt_mcp_public_host: ""
-  # A random 64-character lowercase hexadecimal bearer token. Generate with:
-  # openssl rand -hex 32
+  # Home Assistant OAuth is recommended. Token mode is retained for MCP clients
+  # that can supply a fixed bearer/API key directly.
+  chatgpt_mcp_auth: "oauth"
+  # Exact public HTTPS MCP URL entered in ChatGPT, for example
+  # https://ha.example.com/chatgpt-ha/mcp.
+  chatgpt_mcp_public_url: ""
+  # Used only when ChatGPT MCP authentication is token. Generate with:
+  # openssl rand -hex 32 (exactly 64 lowercase hexadecimal characters).
   chatgpt_mcp_token: ""
 
   # --- 6. Model providers ------------------------------------------------
@@ -209,7 +212,8 @@ schema:
   cors_origins:
     - str
   chatgpt_mcp_enabled: bool
-  chatgpt_mcp_public_host: str?
+  chatgpt_mcp_auth: list(oauth|token)
+  chatgpt_mcp_public_url: url?
   chatgpt_mcp_token: password
 
   # --- 6. Model providers ------------------------------------------------

@@ -97,13 +97,17 @@ configuration:
     name: "Private ChatGPT MCP (beta)"
     description: "Starts the full Home Assistant MCP tool surface on container port 8766 for a private ChatGPT app. Also map the port and publish it through an HTTPS reverse proxy; never expose the raw port directly to the internet."
 
-  chatgpt_mcp_public_host:
-    name: "ChatGPT MCP public host"
-    description: "Required when Private ChatGPT MCP is on. Exact external Host header preserved by the HTTPS proxy, for example ha.example.com; unexpected hosts are rejected."
+  chatgpt_mcp_auth:
+    name: "ChatGPT MCP authentication"
+    description: "Home Assistant OAuth lets ChatGPT open your normal Home Assistant sign-in and uses short-lived access tokens. Fixed token mode is a fallback for MCP clients that support bearer/API-key authentication directly."
+
+  chatgpt_mcp_public_url:
+    name: "ChatGPT MCP public URL"
+    description: "Required when Private ChatGPT MCP is on. Exact HTTPS URL entered in ChatGPT, for example https://ha.example.com/chatgpt-ha/mcp; its hostname is also enforced on every request."
 
   chatgpt_mcp_token:
     name: "ChatGPT MCP token"
-    description: "Required when Private ChatGPT MCP is on. Supply a random 64-character lowercase hexadecimal bearer credential generated with 'openssl rand -hex 32'; it is masked and never exported to OpenCode shell commands."
+    description: "Required only when ChatGPT MCP authentication is 'token'. Supply a random 64-character lowercase hexadecimal bearer credential generated with 'openssl rand -hex 32'; it is masked and never exported to OpenCode shell commands."
 
   ppq_private_enabled:
     name: "PPQ private TEE models (beta)"

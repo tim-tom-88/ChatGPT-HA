@@ -315,20 +315,14 @@ This is a separate, opt-in Streamable HTTP MCP endpoint for a private ChatGPT cu
 
 ### Configure the add-on
 
-1. Generate a bearer credential on a trusted computer:
-
-   ```bash
-   openssl rand -hex 32
-   ```
-
-2. In the add-on **Configuration** tab:
+1. In the add-on **Configuration** tab:
    - enable **ChatGPT MCP**;
-   - set **ChatGPT MCP public host** to the exact external hostname, for example `ha.hodgsonhome.uk`;
-   - paste the generated 64-character value into **ChatGPT MCP token**.
-3. In the add-on **Network** settings, map `8766/tcp` to a host port. Do not expose that port directly to the internet.
-4. Restart the add-on.
+   - choose **oauth** authentication;
+   - set **ChatGPT MCP public URL** to the exact URL you will enter in ChatGPT, for example `https://ha.hodgsonhome.uk/chatgpt-ha/mcp`.
+2. In the add-on **Network** settings, map `8766/tcp` to a host port. Do not expose that port directly to the internet.
+3. Restart the add-on.
 
-The token is copied into a root-only runtime file and is not inherited by OpenCode shell commands. The Home Assistant Supervisor token remains process-only inside the MCP service and is never sent to ChatGPT.
+ChatGPT opens the normal Home Assistant login and receives a short-lived Home Assistant user access token. The MCP service validates that token against Home Assistant before handling each request. The Supervisor token remains process-only inside the MCP service and is never sent to ChatGPT.
 
 ### Publish through HTTPS
 
@@ -336,18 +330,23 @@ Configure the existing reverse proxy or tunnel to forward:
 
 - public `https://ha.hodgsonhome.uk/chatgpt-ha/mcp` to backend `http://HOME_ASSISTANT_HOST:8766/mcp`;
 - optionally, public `https://ha.hodgsonhome.uk/chatgpt-ha/health` to backend `http://HOME_ASSISTANT_HOST:8766/health`.
+- OAuth discovery `https://ha.hodgsonhome.uk/.well-known/oauth-protected-resource` to backend `http://HOME_ASSISTANT_HOST:8766/.well-known/oauth-protected-resource`;
+- OAuth discovery `https://ha.hodgsonhome.uk/.well-known/oauth-authorization-server` to backend `http://HOME_ASSISTANT_HOST:8766/.well-known/oauth-authorization-server`.
 
-Preserve the original `Host` header and disable response buffering for the MCP route. The backend accepts no browser `Origin` header, rejects any unexpected `Host`, caps request/header sizes, and requires `Authorization: Bearer <ChatGPT MCP token>` for every MCP request. The health route is unauthenticated but returns only a static readiness object.
+Leave Home Assistant's existing `/auth/authorize` and `/auth/token` routes pointing to Home Assistant itself. Preserve the original `Host` header and disable response buffering for the MCP route. The backend accepts no browser `Origin` header, rejects any unexpected `Host`, caps request/header sizes, and validates the OAuth bearer token for every MCP request. The health route is unauthenticated but returns only a static readiness object.
 
 ### Connect ChatGPT
 
 In ChatGPT, enable developer mode under **Settings → Apps → Advanced Settings**, then create a private app with:
 
 - **MCP URL:** `https://ha.hodgsonhome.uk/chatgpt-ha/mcp`
-- **Authentication:** bearer/API-key authentication
-- **Bearer value:** the configured ChatGPT MCP token
+- **Authentication:** OAuth
+- **Client ID:** use the HTTPS ChatGPT callback origin shown by the app setup. Home Assistant uses IndieAuth-style client IDs and requires the redirect URI to have the same host and port as that client ID.
+- **Client secret:** leave empty if the ChatGPT form allows it; Home Assistant does not pre-register a client secret for this flow.
 
-If the current ChatGPT app form offers only OAuth or no authentication, do not select no authentication and do not put the token in the URL. This beta endpoint intentionally fails closed; an OAuth adapter is the next compatibility step for such accounts.
+Home Assistant's OAuth implementation requires the same client ID during authorization-code exchange and supports refresh tokens. If ChatGPT requires a non-empty client secret or dynamic client registration, the direct IndieAuth flow is not compatible and the connector will need a small OAuth broker; do not select unauthenticated access as a workaround.
+
+For fixed-token MCP clients, choose **token** authentication instead, generate a credential with `openssl rand -hex 32`, and enter it in **ChatGPT MCP token**. OAuth mode ignores that field.
 
 ### Confirmation behaviour
 

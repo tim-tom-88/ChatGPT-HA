@@ -3,12 +3,11 @@
 CHATGPT_ENV_FILE=/data/.chatgpt_mcp_env
 CHATGPT_SECRET_FILE=/data/.chatgpt_mcp_token
 
-if [ ! -f "${CHATGPT_ENV_FILE}" ] || [ ! -f "${CHATGPT_SECRET_FILE}" ]; then
+if [ ! -f "${CHATGPT_ENV_FILE}" ]; then
     exec sleep infinity
 fi
-if [ -L "${CHATGPT_ENV_FILE}" ] || [ -L "${CHATGPT_SECRET_FILE}" ] \
-    || [ "$(stat -c '%u:%g:%a:%h' "${CHATGPT_ENV_FILE}" 2>/dev/null || true)" != "0:0:600:1" ] \
-    || [ "$(stat -c '%u:%g:%a:%h' "${CHATGPT_SECRET_FILE}" 2>/dev/null || true)" != "0:0:600:1" ]; then
+if [ -L "${CHATGPT_ENV_FILE}" ] \
+    || [ "$(stat -c '%u:%g:%a:%h' "${CHATGPT_ENV_FILE}" 2>/dev/null || true)" != "0:0:600:1" ]; then
     bashio::log.warning "ChatGPT MCP is inactive because its credential files are unsafe"
     exec sleep infinity
 fi
@@ -17,6 +16,12 @@ fi
 source "${CHATGPT_ENV_FILE}"
 # shellcheck disable=SC1091
 source /data/.env_vars
+if [ "${CHATGPT_MCP_AUTH}" = "token" ] \
+    && { [ ! -f "${CHATGPT_SECRET_FILE}" ] || [ -L "${CHATGPT_SECRET_FILE}" ] \
+    || [ "$(stat -c '%u:%g:%a:%h' "${CHATGPT_SECRET_FILE}" 2>/dev/null || true)" != "0:0:600:1" ]; }; then
+    bashio::log.warning "ChatGPT MCP is inactive because its bearer credential is unsafe"
+    exec sleep infinity
+fi
 if [ -z "${SUPERVISOR_TOKEN:-}" ]; then
     bashio::log.warning "ChatGPT MCP is inactive because Supervisor credentials are unavailable"
     exec sleep infinity
@@ -45,9 +50,10 @@ exec env -i \
     Z2M_URL="${Z2M_URL:-}" \
     Z2M_MQTT_TOPIC="${Z2M_MQTT_TOPIC:-}" \
     CHATGPT_MCP_REMOTE=true \
+    CHATGPT_MCP_AUTH="${CHATGPT_MCP_AUTH}" \
+    CHATGPT_MCP_PUBLIC_URL="${CHATGPT_MCP_PUBLIC_URL}" \
     OPENCODE_MCP_TRANSPORT=streamable-http \
     OPENCODE_MCP_SIDECAR_HOST=0.0.0.0 \
     OPENCODE_MCP_SIDECAR_PORT=8766 \
-    OPENCODE_MCP_SIDECAR_PUBLIC_HOST="${CHATGPT_MCP_PUBLIC_HOST}" \
     OPENCODE_MCP_SIDECAR_SECRET_FILE="${CHATGPT_SECRET_FILE}" \
     node /opt/ha-mcp-server/index.js

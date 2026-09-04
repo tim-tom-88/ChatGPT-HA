@@ -42,7 +42,8 @@ HOME_BRIEFING_ENABLED=$(bashio::config 'home_briefing_enabled' 2>/dev/null || ec
 DECISION_NOTES_ENABLED=$(bashio::config 'decision_notes_enabled' 2>/dev/null || echo "true")
 USER_HOOKS_ENABLED=$(bashio::config 'user_hooks_enabled' 2>/dev/null || echo "false")
 CHATGPT_MCP_ENABLED=$(bashio::config 'chatgpt_mcp_enabled' 2>/dev/null || echo "false")
-CHATGPT_MCP_PUBLIC_HOST=$(bashio::config 'chatgpt_mcp_public_host' 2>/dev/null || echo "")
+CHATGPT_MCP_AUTH=$(bashio::config 'chatgpt_mcp_auth' 2>/dev/null || echo "oauth")
+CHATGPT_MCP_PUBLIC_URL=$(bashio::config 'chatgpt_mcp_public_url' 2>/dev/null || echo "")
 
 ACCESS_TOKEN=$(bashio::config 'access_token' || echo "")
 PPQ_API_KEY=$(bashio::config 'ppq_api_key' || echo "")
@@ -112,9 +113,11 @@ fi
 
 CHATGPT_MCP_CONFIG_VALID=false
 if [ "${CHATGPT_MCP_ENABLED}" = "true" ]; then
-    if ! printf '%s' "${CHATGPT_MCP_PUBLIC_HOST}" | grep -Eq '^[A-Za-z0-9.-]+(:[0-9]+)?$'; then
-        bashio::log.warning "ChatGPT MCP is inactive: public host is missing or invalid"
-    elif ! printf '%s' "${CHATGPT_MCP_TOKEN}" | grep -Eq '^[0-9a-f]{64}$'; then
+    if ! printf '%s' "${CHATGPT_MCP_PUBLIC_URL}" | grep -Eq '^https://[A-Za-z0-9.-]+(:[0-9]+)?/[A-Za-z0-9._~!$&()*+,;=:@%/-]*$'; then
+        bashio::log.warning "ChatGPT MCP is inactive: public URL must be an HTTPS URL without a query or fragment"
+    elif [ "${CHATGPT_MCP_AUTH}" != "oauth" ] && [ "${CHATGPT_MCP_AUTH}" != "token" ]; then
+        bashio::log.warning "ChatGPT MCP is inactive: authentication must be oauth or token"
+    elif [ "${CHATGPT_MCP_AUTH}" = "token" ] && ! printf '%s' "${CHATGPT_MCP_TOKEN}" | grep -Eq '^[0-9a-f]{64}$'; then
         bashio::log.warning "ChatGPT MCP is inactive: token must be 64 lowercase hexadecimal characters"
     else
         CHATGPT_MCP_CONFIG_VALID=true
@@ -271,10 +274,14 @@ CHATGPT_MCP_ENV_FILE=/data/.chatgpt_mcp_env
 CHATGPT_MCP_SECRET_FILE=/data/.chatgpt_mcp_token
 rm -f "${CHATGPT_MCP_ENV_FILE}" "${CHATGPT_MCP_SECRET_FILE}"
 if [ "${CHATGPT_MCP_CONFIG_VALID}" = "true" ]; then
-    printf 'export CHATGPT_MCP_PUBLIC_HOST=%q\n' "${CHATGPT_MCP_PUBLIC_HOST}" > "${CHATGPT_MCP_ENV_FILE}"
-    printf '%s\n' "${CHATGPT_MCP_TOKEN}" > "${CHATGPT_MCP_SECRET_FILE}"
-    chmod 600 "${CHATGPT_MCP_ENV_FILE}" "${CHATGPT_MCP_SECRET_FILE}"
-    bashio::log.info "ChatGPT MCP listener configured for ${CHATGPT_MCP_PUBLIC_HOST}:8766"
+    printf 'export CHATGPT_MCP_PUBLIC_URL=%q\n' "${CHATGPT_MCP_PUBLIC_URL}" > "${CHATGPT_MCP_ENV_FILE}"
+    printf 'export CHATGPT_MCP_AUTH=%q\n' "${CHATGPT_MCP_AUTH}" >> "${CHATGPT_MCP_ENV_FILE}"
+    chmod 600 "${CHATGPT_MCP_ENV_FILE}"
+    if [ "${CHATGPT_MCP_AUTH}" = "token" ]; then
+        printf '%s\n' "${CHATGPT_MCP_TOKEN}" > "${CHATGPT_MCP_SECRET_FILE}"
+        chmod 600 "${CHATGPT_MCP_SECRET_FILE}"
+    fi
+    bashio::log.info "ChatGPT MCP listener configured for ${CHATGPT_MCP_PUBLIC_URL}"
 fi
 
 # ==============================================================================
