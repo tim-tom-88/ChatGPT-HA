@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## 3.0.0b12
+
+- Fix validation of the configured ChatGPT MCP public URL in Home Assistant.
+
 ## 3.0.0b11
 
 - Added an opt-in private ChatGPT Streamable HTTP MCP endpoint with Home Assistant OAuth (plus fixed-token fallback), strict Host checking, standard MCP safety annotations, whole-installation discovery, and exact-action one-time confirmation challenges for sensitive operations.

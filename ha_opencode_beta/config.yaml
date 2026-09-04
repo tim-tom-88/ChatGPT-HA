@@ -1,7 +1,7 @@
 ---
 name: "OpenCode Beta"
 description: "Beta channel for OpenCode - AI coding agent for Home Assistant. May contain experimental features."
-version: "3.0.0b11"
+version: "3.0.0b12"
 slug: "ha_opencode_beta"
 image: "ghcr.io/tim-tom-88/ha_opencode_beta"
 url: "https://github.com/tim-tom-88/ChatGPT-HA"
@@ -213,7 +213,7 @@ schema:
     - str
   chatgpt_mcp_enabled: bool
   chatgpt_mcp_auth: list(oauth|token)
-  chatgpt_mcp_public_url: url?
+  chatgpt_mcp_public_url: url
   chatgpt_mcp_token: password
 
   # --- 6. Model providers ------------------------------------------------
